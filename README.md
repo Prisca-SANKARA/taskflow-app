@@ -53,3 +53,14 @@ Crée un fichier `.env` :
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
+```bash
+npm run dev
+```
+
+## Démo
+
+🔗 **Live demo** : [taskflow-prisca.netlify.app](https://taskflow-prisca.netlify.app)
+
+---
+
+Built by [Prisca SANKARA](https://github.com/Prisca-SANKARA)
