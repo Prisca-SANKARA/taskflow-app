@@ -117,16 +117,16 @@ export default function Tasks({ user }) {
   })
 
   return (
-    <div className="w-full px-10 py-10">
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10">
 
       {/* Titre page */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-6xl font-black text-gray-800">Mes tâches</h1>
-          <p className="text-gray-400 text-xl mt-1">{total} tâches · {pending} en cours · {overdue} en retard</p>
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-gray-800">Mes tâches</h1>
+          <p className="text-gray-400 text-base sm:text-lg lg:text-xl mt-1">{total} tâches · {pending} en cours · {overdue} en retard</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="px-6 py-3 rounded-2xl text-base font-black text-white transition-all active:scale-95 flex items-center gap-2"
+          className="w-full sm:w-auto justify-center px-5 sm:px-6 py-3 rounded-2xl text-sm sm:text-base font-black text-white transition-all active:scale-95 flex items-center gap-2 flex-shrink-0"
           style={{ background:showForm?'#f8faff':'linear-gradient(135deg,#8b5cf6,#ec4899)', color:showForm?'#8b5cf6':'white', border:showForm?'2px dashed #c4b5fd':'none', boxShadow:showForm?'none':'0 4px 20px rgba(139,92,246,0.4)' }}>
           {showForm ? '✕ Annuler' : '+ Nouvelle tâche'}
         </button>
@@ -146,7 +146,7 @@ export default function Tasks({ user }) {
 
       {/* Formulaire */}
       {showForm && (
-        <div className="bg-white/90 rounded-2xl p-7 mb-8 shadow-sm border border-white">
+        <div className="bg-white/90 rounded-2xl p-5 sm:p-7 mb-8 shadow-sm border border-white">
           <h3 className="text-lg font-black text-gray-700 mb-5">✨ Créer une tâche</h3>
           <form onSubmit={addTask} className="space-y-4">
 

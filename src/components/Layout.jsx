@@ -12,7 +12,7 @@ export default function Layout({ user }) {
   }
 
   const navClass = ({ isActive }) => `
-    flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all
+    flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-bold transition-all
     ${isActive
       ? 'text-white shadow-lg'
       : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
@@ -27,7 +27,7 @@ export default function Layout({ user }) {
       {/* Header */}
       <div className="sticky top-0 z-20 w-full"
         style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(139,92,246,0.15)' }}>
-        <div className="w-full px-6 py-3 flex items-center justify-between gap-4">
+        <div className="w-full px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-4">
 
           {/* Logo */}
           <div className="flex items-center gap-3 flex-shrink-0">
@@ -37,7 +37,7 @@ export default function Layout({ user }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
               </svg>
             </div>
-            <span className="font-black text-gray-800 text-xl">TaskFlow</span>
+            <span className="hidden sm:block font-black text-gray-800 text-xl">TaskFlow</span>
           </div>
 
           {/* Navigation */}
@@ -47,14 +47,14 @@ export default function Layout({ user }) {
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
               </svg>
-              Dashboard
+              <span className="hidden md:inline">Dashboard</span>
             </NavLink>
             <NavLink to="/tasks" className={navClass}
               style={({ isActive }) => isActive ? activeStyle : {}}>
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7l3 3 3-3"/>
               </svg>
-              Mes tâches
+              <span className="hidden md:inline">Mes tâches</span>
             </NavLink>
           </nav>
 
@@ -68,13 +68,13 @@ export default function Layout({ user }) {
               </div>
               <span className="text-gray-600 text-sm font-semibold hidden sm:block">{firstName}</span>
             </div>
-            <button onClick={logout}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all"
+            <button onClick={logout} aria-label="Se déconnecter"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-bold transition-all"
               style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
-              Déconnexion
+              <span className="hidden md:inline">Déconnexion</span>
             </button>
           </div>
 

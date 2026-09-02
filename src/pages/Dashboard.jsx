@@ -1,10 +1,24 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { CAT_COLORS, CATEGORIES, getStatus } from '../lib/taskUtils'
 import { useTasks } from '../context/tasks-context'
 
+const NARROW = '(max-width: 640px)'
+
 export default function Dashboard({ user }) {
   const { tasks, loading } = useTasks()
+
+  // Recharts cesse de dessiner si le conteneur est comprime sous la taille demandee.
+  // On l'isole donc de flex-shrink et on reduit le graphe sur petit ecran.
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW)
+    const onChange = e => setNarrow(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  const donut = narrow ? { size: 140, inner: 40, outer: 64 } : { size: 180, inner: 52, outer: 82 }
 
   const firstName = user.user_metadata?.first_name || user.email?.split('@')[0] || 'toi'
 
@@ -49,16 +63,16 @@ export default function Dashboard({ user }) {
   )
 
   return (
-    <div className="w-full px-10 py-10">
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10">
 
       {/* Greeting */}
-      <div className="mb-10">
-        <h1 className="text-6xl font-black text-gray-800 mb-2">
+      <div className="mb-6 sm:mb-10">
+        <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-gray-800 mb-2">
           Bonjour, <span style={{ background:'linear-gradient(135deg,#8b5cf6,#ec4899)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             {firstName}
           </span> 👋
         </h1>
-        <p className="text-gray-500 text-xl">
+        <p className="text-gray-500 text-base sm:text-lg lg:text-xl">
           {pending === 0 && total > 0
             ? '🎉 Bravo ! Toutes tes tâches sont complétées.'
             : total === 0
@@ -66,7 +80,7 @@ export default function Dashboard({ user }) {
             : <>Tu as <strong className="text-gray-700">{pending}</strong> tâche{pending > 1?'s':''} en cours.</>
           }
           {overdue > 0 && (
-            <span className="ml-3 text-sm font-black px-3 py-1 rounded-xl"
+            <span className="inline-block mt-2 sm:mt-0 sm:ml-3 text-sm font-black px-3 py-1 rounded-xl whitespace-nowrap"
               style={{ background:'#fef2f2', color:'#ef4444' }}>
               ⚠️ {overdue} en retard
             </span>
@@ -75,52 +89,54 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-6 sm:mb-10">
         {[
           { label:'Total',      value:total,     from:'#6366f1', to:'#8b5cf6', icon:'📋' },
           { label:'Complétées', value:completed, from:'#10b981', to:'#059669', icon:'✅' },
           { label:'En cours',   value:pending,   from:'#f59e0b', to:'#f97316', icon:'⏳' },
           { label:'En retard',  value:overdue,   from:'#ef4444', to:'#dc2626', icon:'🚨' },
         ].map(({ label, value, from, to, icon }) => (
-          <div key={label} className="rounded-2xl p-6 relative overflow-hidden"
+          <div key={label} className="rounded-2xl p-4 sm:p-6 relative overflow-hidden"
             style={{ background:`linear-gradient(135deg,${from},${to})`, boxShadow:`0 8px 32px ${from}40` }}>
             <div className="absolute -right-5 -top-5 w-24 h-24 rounded-full opacity-20" style={{ background:'white' }}/>
             <p className="text-white/70 text-xs font-black uppercase tracking-wider mb-3">{label}</p>
             <div className="flex items-end justify-between">
-              <p className="text-5xl font-black text-white">{value}</p>
-              <span className="text-4xl">{icon}</span>
+              <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-white">{value}</p>
+              <span className="text-2xl sm:text-4xl">{icon}</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Graphiques */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-10">
 
         {/* Donut */}
-        <div className="bg-white/80 rounded-2xl p-7 shadow-sm border border-white">
+        <div className="bg-white/80 rounded-2xl p-5 sm:p-7 shadow-sm border border-white">
           <h3 className="text-lg font-black text-gray-700 mb-1">Par catégorie</h3>
           <p className="text-gray-400 text-sm mb-5">Répartition de tes {total} tâches</p>
           {total === 0 ? (
             <div className="flex items-center justify-center h-32 text-gray-300 text-sm">Aucune tâche</div>
           ) : (
-            <div className="flex items-center gap-6">
-              <ResponsiveContainer width={180} height={180}>
-                <PieChart>
-                  <Pie data={donutData} cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={4} dataKey="value">
-                    {donutData.map(entry => <Cell key={entry.name} fill={CAT_COLORS[entry.name] || '#8b5cf6'}/>)}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px', border:'none', boxShadow:'0 4px 20px rgba(0,0,0,0.1)' }}/>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-2.5 flex-1">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex-shrink-0" style={{ width: donut.size, height: donut.size }}>
+                <ResponsiveContainer width={donut.size} height={donut.size}>
+                  <PieChart>
+                    <Pie data={donutData} cx="50%" cy="50%" innerRadius={donut.inner} outerRadius={donut.outer} paddingAngle={4} dataKey="value" isAnimationActive={false}>
+                      {donutData.map(entry => <Cell key={entry.name} fill={CAT_COLORS[entry.name] || '#8b5cf6'}/>)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius:'12px', fontSize:'13px', border:'none', boxShadow:'0 4px 20px rgba(0,0,0,0.1)' }}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2.5 flex-1 min-w-0">
                 {donutData.map(d => (
-                  <div key={d.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div key={d.name} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-3 h-3 rounded-full" style={{ background:CAT_COLORS[d.name] }}/>
-                      <span className="text-gray-500 text-sm capitalize font-medium">{d.name}</span>
+                      <span className="text-gray-500 text-sm capitalize font-medium truncate">{d.name}</span>
                     </div>
-                    <span className="font-black text-gray-700 text-sm">{d.value}</span>
+                    <span className="font-black text-gray-700 text-sm flex-shrink-0">{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -129,7 +145,7 @@ export default function Dashboard({ user }) {
         </div>
 
         {/* Barres — créées vs terminées */}
-        <div className="bg-white/80 rounded-2xl p-7 shadow-sm border border-white">
+        <div className="bg-white/80 rounded-2xl p-5 sm:p-7 shadow-sm border border-white">
           <h3 className="text-lg font-black text-gray-700 mb-1">Activité de la semaine</h3>
           <p className="text-gray-400 text-sm mb-5">Tâches créées vs terminées, 7 derniers jours</p>
           <ResponsiveContainer width="100%" height={150}>
@@ -151,13 +167,13 @@ export default function Dashboard({ user }) {
       </div>
 
       {/* Progression */}
-      <div className="bg-white/80 rounded-2xl p-7 mb-10 shadow-sm border border-white">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white/80 rounded-2xl p-5 sm:p-7 mb-6 sm:mb-10 shadow-sm border border-white">
+        <div className="flex items-center justify-between gap-4 mb-4">
           <div>
             <h3 className="text-lg font-black text-gray-700">Progression globale</h3>
             <p className="text-gray-400 text-sm">{completed} sur {total} tâches complétées</p>
           </div>
-          <span className="text-4xl font-black" style={{ background:'linear-gradient(135deg,#8b5cf6,#ec4899)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+          <span className="text-3xl sm:text-4xl font-black flex-shrink-0" style={{ background:'linear-gradient(135deg,#8b5cf6,#ec4899)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
             {rate}%
           </span>
         </div>
@@ -169,7 +185,7 @@ export default function Dashboard({ user }) {
 
       {/* Tâches urgentes */}
       {urgent.length > 0 && (
-        <div className="bg-white/80 rounded-2xl p-7 shadow-sm border border-white">
+        <div className="bg-white/80 rounded-2xl p-5 sm:p-7 shadow-sm border border-white">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="text-lg font-black text-gray-700">⚡ Tâches urgentes</h3>
@@ -185,12 +201,12 @@ export default function Dashboard({ user }) {
             {urgent.map(task => {
               const status = getStatus(task.end_date)
               return (
-                <div key={task.id} className="flex items-center justify-between px-4 py-3 rounded-xl"
+                <div key={task.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
                   style={{ background:'#f8faff', border:'1px solid #e8e0ff' }}>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{ background: status?.color || '#8b5cf6' }}/>
-                    <span className="text-sm font-bold text-gray-700">{task.title}</span>
+                    <span className="text-sm font-bold text-gray-700 truncate">{task.title}</span>
                   </div>
                   {status && (
                     <span className="text-xs font-black px-3 py-1 rounded-lg border flex-shrink-0"

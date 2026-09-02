@@ -80,7 +80,7 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
       </div>
 
       {/* Dates */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">🟢 Début</label>
           <input type="datetime-local" value={editForm.start_date}
@@ -149,7 +149,7 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
   return (
     <div className="group bg-white/80 rounded-2xl border border-white hover:border-violet-100 hover:shadow-md transition-all"
       style={{ opacity: task.completed ? 0.6 : 1 }}>
-      <div className="px-5 py-4 flex items-start gap-4">
+      <div className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-4">
 
         {/* Checkbox */}
         <button onClick={() => onToggle(task)}
@@ -164,7 +164,7 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
 
         {/* Contenu */}
         <div className="flex-1 min-w-0">
-          <p className={`text-lg font-bold ${task.completed?'line-through text-gray-400':'text-gray-700'}`}>
+          <p className={`text-base sm:text-lg font-bold break-words ${task.completed?'line-through text-gray-400':'text-gray-700'}`}>
             {task.title}
           </p>
 
@@ -236,7 +236,7 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all flex-shrink-0">
           <button onClick={() => setEditing(true)} aria-label="Modifier la tâche"
             className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
             style={{ background:'rgba(139,92,246,0.1)', color:'#8b5cf6' }}>
