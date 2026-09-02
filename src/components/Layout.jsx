@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { TasksProvider } from '../context/TasksContext'
 
 export default function Layout({ user }) {
   const navigate  = useNavigate()
@@ -82,9 +83,10 @@ export default function Layout({ user }) {
 
       {/* Contenu de la page */}
       <main className="w-full">
+      <TasksProvider user={user}>
         <Outlet />
+      </TasksProvider>
       </main>
-
     </div>
   )
 }

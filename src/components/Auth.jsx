@@ -13,11 +13,13 @@ const EyeIcon = ({ open }) => open ? (
 )
 
 function InputField({ label, type, value, onChange, placeholder, children }) {
+  const id = 'field-' + label.toLowerCase().replace(/\s+/g, '-')
   return (
     <div>
-      <label className="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wider">{label}</label>
+      <label htmlFor={id} className="text-xs font-bold text-gray-500 mb-1.5 block uppercase tracking-wider">{label}</label>
       <div className="relative">
         <input
+          id={id}
           type={type}
           value={value}
           onChange={onChange}
@@ -34,6 +36,22 @@ function InputField({ label, type, value, onChange, placeholder, children }) {
   )
 }
 
+// Traduit les erreurs Supabase en messages lisibles en français.
+// On se base sur error.code quand il existe, sinon sur le message brut.
+function authErrorMessage(error) {
+  const code = error.code || ''
+  const msg  = (error.message || '').toLowerCase()
+
+  if (code === 'invalid_credentials'  || msg.includes('invalid login credentials')) return 'Email ou mot de passe incorrect.'
+  if (code === 'email_not_confirmed'  || msg.includes('email not confirmed'))       return "Ton adresse email n'est pas encore confirmée."
+  if (code === 'user_already_exists'  || msg.includes('already registered'))        return 'Un compte existe déjà avec cet email.'
+  if (code === 'weak_password'        || msg.includes('password should be'))        return 'Mot de passe trop faible (6 caractères minimum).'
+  if (code === 'over_email_send_rate_limit' || msg.includes('rate limit'))          return "Trop de tentatives. Réessaie dans quelques minutes."
+  if (msg.includes('for security purposes'))                                        return 'Trop de tentatives rapprochées. Patiente une minute.'
+  if (msg.includes('failed to fetch') || msg.includes('network'))                   return 'Connexion au serveur impossible. Vérifie ta connexion internet.'
+  return error.message
+}
+
 export default function Auth() {
   const [mode, setMode] = useState('login')
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' })
@@ -42,15 +60,20 @@ export default function Auth() {
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState('')
   const [success, setSuccess]           = useState('')
+  const [needsConfirm, setNeedsConfirm] = useState(false)
 
   const set   = field => e => setForm({ ...form, [field]: e.target.value })
-  const reset = () => { setError(''); setSuccess('') }
+  const reset = () => { setError(''); setSuccess(''); setNeedsConfirm(false) }
   const switchMode = m => { setMode(m); reset(); setForm({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' }) }
 
   async function handleLogin(e) {
     e.preventDefault(); setLoading(true); reset()
     const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
-    if (error) setError(error.message)
+    if (error) {
+      setError(authErrorMessage(error))
+      const code = error.code || ''
+      setNeedsConfirm(code === 'email_not_confirmed' || /email not confirmed/i.test(error.message || ''))
+    }
     setLoading(false)
   }
 
@@ -58,20 +81,41 @@ export default function Auth() {
     e.preventDefault(); setLoading(true); reset()
     if (form.password !== form.confirmPassword) { setError('Les mots de passe ne correspondent pas.'); setLoading(false); return }
     if (form.password.length < 6) { setError('Minimum 6 caractères.'); setLoading(false); return }
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email, password: form.password,
-      options: { data: { first_name: form.firstName, last_name: form.lastName } }
+      options: {
+        data: { first_name: form.firstName, last_name: form.lastName },
+        emailRedirectTo: window.location.origin,
+      }
     })
-    if (error) setError(error.message)
-    else setSuccess('Compte créé ! Vérifie ta boîte mail pour confirmer.')
+    if (error) { setError(authErrorMessage(error)); setLoading(false); return }
+
+    // Supabase renvoie un utilisateur sans identité quand l'email est déjà pris
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setError('Un compte existe déjà avec cet email.')
+      setLoading(false)
+      return
+    }
+    // Avec la confirmation désactivée, la session arrive tout de suite : onAuthStateChange prend le relais
+    if (data.session) setSuccess('Compte créé ! Connexion en cours...')
+    else              setSuccess('Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse.')
     setLoading(false)
   }
 
   async function handleForgot(e) {
     e.preventDefault(); setLoading(true); reset()
     const { error } = await supabase.auth.resetPasswordForEmail(form.email, { redirectTo: window.location.origin })
-    if (error) setError(error.message)
+    if (error) setError(authErrorMessage(error))
     else setSuccess('Lien envoyé ! Vérifie ta boîte mail.')
+    setLoading(false)
+  }
+
+  async function resendConfirmation() {
+    if (!form.email) { setError('Renseigne ton email pour recevoir un nouveau lien.'); return }
+    setLoading(true); setError(''); setSuccess('')
+    const { error } = await supabase.auth.resend({ type: 'signup', email: form.email })
+    if (error) setError(authErrorMessage(error))
+    else setSuccess('Email de confirmation renvoyé !')
     setLoading(false)
   }
 
@@ -177,6 +221,7 @@ export default function Auth() {
                 <InputField label="Email" type="email" value={form.email} onChange={set('email')} placeholder="ton@email.com" />
                 <InputField label="Mot de passe" type={showPassword ? 'text' : 'password'} value={form.password} onChange={set('password')} placeholder="••••••••">
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-500 transition">
                     <EyeIcon open={showPassword} />
                   </button>
@@ -194,6 +239,13 @@ export default function Auth() {
                     style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}>
                     <span>⚠️</span> {error}
                   </div>
+                )}
+
+                {needsConfirm && (
+                <button type="button" onClick={resendConfirmation}
+                  className="text-xs font-semibold underline" style={{ color:'#8b5cf6' }}>
+                  Renvoyer l'email de confirmation
+                </button>
                 )}
 
                 <button type="submit" disabled={loading}

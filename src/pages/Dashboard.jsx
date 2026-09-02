@@ -1,19 +1,12 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../supabase'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
-import { CAT_COLORS, CATEGORIES, getStatus } from '../components/TaskRow'
+import { CAT_COLORS, CATEGORIES, getStatus } from '../lib/taskUtils'
+import { useTasks } from '../context/tasks-context'
 
 export default function Dashboard({ user }) {
-  const [tasks, setTasks]     = useState([])
-  const [loading, setLoading] = useState(true)
+  const { tasks, loading } = useTasks()
 
   const firstName = user.user_metadata?.first_name || user.email?.split('@')[0] || 'toi'
-
-  useEffect(() => {
-    supabase.from('tasks').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => { setTasks(data || []); setLoading(false) })
-  }, [])
 
   const total     = tasks.length
   const completed = tasks.filter(t => t.completed).length
@@ -28,12 +21,20 @@ export default function Dashboard({ user }) {
     .map(cat => ({ name: cat, value: tasks.filter(t => t.category === cat).length }))
     .filter(d => d.value > 0)
 
-  const days    = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']
-  const barData = days.map((day, i) => ({
-    day,
-    créées:    tasks.filter(t => new Date(t.created_at).getDay() === i).length,
-    terminées: tasks.filter(t => t.completed && new Date(t.created_at).getDay() === i).length,
-  }))
+  const today = new Date()
+  const last7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - (6 - i))
+    return d
+  })
+  const barData = last7.map(d => {
+    const key = d.toDateString()
+    return {
+      day:       d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+      créées:    tasks.filter(t => new Date(t.created_at).toDateString() === key).length,
+      terminées: tasks.filter(t => t.completed_at && new Date(t.completed_at).toDateString() === key).length,
+    }
+  })
 
   const urgent = tasks
     .filter(t => !t.completed && t.end_date)
@@ -130,7 +131,7 @@ export default function Dashboard({ user }) {
         {/* Barres — créées vs terminées */}
         <div className="bg-white/80 rounded-2xl p-7 shadow-sm border border-white">
           <h3 className="text-lg font-black text-gray-700 mb-1">Activité de la semaine</h3>
-          <p className="text-gray-400 text-sm mb-5">Tâches créées vs terminées par jour</p>
+          <p className="text-gray-400 text-sm mb-5">Tâches créées vs terminées, 7 derniers jours</p>
           <ResponsiveContainer width="100%" height={150}>
             <BarChart data={barData} barSize={14} barGap={3}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
@@ -182,7 +183,7 @@ export default function Dashboard({ user }) {
           </div>
           <div className="space-y-3">
             {urgent.map(task => {
-              const status = getStatus(task.start_date, task.end_date)
+              const status = getStatus(task.end_date)
               return (
                 <div key={task.id} className="flex items-center justify-between px-4 py-3 rounded-xl"
                   style={{ background:'#f8faff', border:'1px solid #e8e0ff' }}>

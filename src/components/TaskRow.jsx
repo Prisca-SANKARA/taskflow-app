@@ -1,32 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-
-const PRIORITY = {
-  high:   { label:'Haute',   bg:'bg-rose-100 text-rose-600 border-rose-200',          dot:'bg-rose-500'    },
-  medium: { label:'Moyenne', bg:'bg-amber-100 text-amber-600 border-amber-200',        dot:'bg-amber-500'   },
-  low:    { label:'Basse',   bg:'bg-emerald-100 text-emerald-600 border-emerald-200',  dot:'bg-emerald-500' },
-}
-const CATEGORIES = ['general','travail','personnel','études','santé']
-const CAT_COLORS  = { general:'#8b5cf6', travail:'#3b82f6', personnel:'#ec4899', études:'#f59e0b', santé:'#10b981' }
-
-function formatDate(dt) {
-  if (!dt) return null
-  return new Date(dt).toLocaleString('fr-FR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
-}
-
-function getStatus(start_date, end_date) {
-  const now = new Date()
-  if (end_date) {
-    const end = new Date(end_date)
-    const diff = Math.ceil((end - now) / (1000*60*60*24))
-    if (diff < 0)  return { label:`${Math.abs(diff)}j de retard`, color:'#ef4444', bg:'#fef2f2', border:'#fecaca' }
-    if (diff === 0) return { label:"Aujourd'hui",                  color:'#f59e0b', bg:'#fffbeb', border:'#fde68a' }
-    if (diff <= 3)  return { label:`Dans ${diff}j`,               color:'#f97316', bg:'#fff7ed', border:'#fed7aa' }
-    return              { label:`Dans ${diff}j`,                   color:'#10b981', bg:'#f0fdf4', border:'#bbf7d0' }
-  }
-  return null
-}
-
-export { PRIORITY, CATEGORIES, CAT_COLORS, getStatus, formatDate }
+import { PRIORITY, CATEGORIES, CAT_COLORS, getStatus, formatDate } from '../lib/taskUtils'
 
 export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
   const [editing, setEditing]   = useState(false)
@@ -42,12 +15,16 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
     needs:       task.needs || [],
   })
   const inputRef  = useRef()
-  const dueStatus = getStatus(task.start_date, task.end_date)
+  const dueStatus = getStatus(task.end_date)
 
   useEffect(() => { if (editing && inputRef.current) inputRef.current.focus() }, [editing])
 
   async function saveEdit() {
     if (!editForm.title.trim()) return
+    if (editForm.start_date && editForm.end_date && editForm.start_date > editForm.end_date) {
+      alert('La date de fin doit être après la date de début.')
+      return
+    }
     const payload = {
       ...editForm,
       start_date: editForm.start_date || null,
@@ -107,6 +84,7 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">🟢 Début</label>
           <input type="datetime-local" value={editForm.start_date}
+            max={editForm.end_date || undefined}
             onChange={e => setEditForm({...editForm, start_date:e.target.value})}
             className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
             style={{ background:'#f0fdf4', border:'1.5px solid #bbf7d0', color:'#374151' }}
@@ -115,6 +93,7 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">🔴 Fin</label>
           <input type="datetime-local" value={editForm.end_date}
+            min={editForm.start_date || undefined}
             onChange={e => setEditForm({...editForm, end_date:e.target.value})}
             className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
             style={{ background:'#fef2f2', border:'1.5px solid #fecaca', color:'#374151' }}
@@ -258,14 +237,14 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdate }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-          <button onClick={() => setEditing(true)}
+          <button onClick={() => setEditing(true)} aria-label="Modifier la tâche"
             className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
             style={{ background:'rgba(139,92,246,0.1)', color:'#8b5cf6' }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
             </svg>
           </button>
-          <button onClick={() => onDelete(task.id)}
+          <button onClick={() => onDelete(task.id)} aria-label="Supprimer la tâche"
             className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
             style={{ background:'rgba(239,68,68,0.08)', color:'#ef4444' }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

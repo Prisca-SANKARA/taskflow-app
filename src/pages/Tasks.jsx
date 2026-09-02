@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '../supabase'
-import TaskRow, { PRIORITY, CATEGORIES, CAT_COLORS } from '../components/TaskRow'
+import TaskRow from '../components/TaskRow'
+import { PRIORITY, CATEGORIES } from '../lib/taskUtils'
+import { useTasks } from '../context/tasks-context'
+
+// Passe à false si la base n'a pas encore la colonne completed_at (voir supabase/schema.sql)
+let hasCompletedAt = true
 
 export default function Tasks({ user }) {
-  const [tasks, setTasks]       = useState([])
-  const [loading, setLoading]   = useState(true)
+  const { tasks, setTasks, loading, error: loadError } = useTasks()
+  const [feedback, setFeedback] = useState('')
   const [adding, setAdding]     = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch]     = useState('')
@@ -16,40 +21,59 @@ export default function Tasks({ user }) {
     category:'general', start_date:'', end_date:'', needs:[]
   })
 
-  useEffect(() => {
-    supabase.from('tasks').select('*').order('created_at', { ascending:false })
-      .then(({ data }) => { setTasks(data || []); setLoading(false) })
-  }, [])
-
   async function addTask(e) {
     e.preventDefault()
     if (!newTask.title.trim()) return
+    if (newTask.start_date && newTask.end_date && newTask.start_date > newTask.end_date) {
+      setFeedback('La date de fin doit être après la date de début.')
+      return
+    }
+    setFeedback('')
     setAdding(true)
-    const { data } = await supabase.from('tasks').insert({
+    const { data, error } = await supabase.from('tasks').insert({
       ...newTask,
       user_id:    user.id,
       start_date: newTask.start_date || null,
       end_date:   newTask.end_date   || null,
     }).select().single()
+    setAdding(false)
+    if (error) { setFeedback('Impossible de créer la tâche : ' + error.message); return }
     setTasks([data, ...tasks])
     setNewTask({ title:'', description:'', priority:'medium', category:'general', start_date:'', end_date:'', needs:[] })
     setNeedInput('')
     setShowForm(false)
-    setAdding(false)
   }
 
   async function toggleTask(task) {
-    await supabase.from('tasks').update({ completed:!task.completed }).eq('id', task.id)
-    setTasks(tasks.map(t => t.id===task.id ? {...t, completed:!t.completed} : t))
+    const completed = !task.completed
+    const patch = { completed }
+    if (hasCompletedAt) patch.completed_at = completed ? new Date().toISOString() : null
+
+    let { error } = await supabase.from('tasks').update(patch).eq('id', task.id).eq('user_id', user.id)
+
+    // La colonne completed_at n'existe pas encore en base : on retente sans elle
+    if (error && hasCompletedAt && /completed_at/.test(error.message || '')) {
+      hasCompletedAt = false
+      delete patch.completed_at
+      ;({ error } = await supabase.from('tasks').update(patch).eq('id', task.id).eq('user_id', user.id))
+    }
+    if (error) { setFeedback('Impossible de mettre à jour la tâche : ' + error.message); return }
+    setFeedback('')
+    setTasks(tasks.map(t => t.id===task.id ? {...t, ...patch} : t))
   }
 
   async function deleteTask(id) {
-    await supabase.from('tasks').delete().eq('id', id)
+    if (!window.confirm('Supprimer cette tâche définitivement ?')) return
+    const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', user.id)
+    if (error) { setFeedback('Impossible de supprimer la tâche : ' + error.message); return }
+    setFeedback('')
     setTasks(tasks.filter(t => t.id!==id))
   }
 
   async function updateTask(id, fields) {
-    await supabase.from('tasks').update(fields).eq('id', id)
+    const { error } = await supabase.from('tasks').update(fields).eq('id', id).eq('user_id', user.id)
+    if (error) { setFeedback('Impossible de mettre à jour la tâche : ' + error.message); return }
+    setFeedback('')
     setTasks(tasks.map(t => t.id===id ? {...t, ...fields} : t))
   }
 
@@ -79,10 +103,16 @@ export default function Tasks({ user }) {
     t.description?.toLowerCase().includes(search.toLowerCase()) ||
     t.needs?.some(n => n.toLowerCase().includes(search.toLowerCase()))
   )
+  // Les tâches sans date renseignée sont renvoyées en fin de liste
+  const byDate = (key, a, b) => {
+    const av = a[key] ? new Date(a[key]).getTime() : Infinity
+    const bv = b[key] ? new Date(b[key]).getTime() : Infinity
+    return av - bv
+  }
   filtered = [...filtered].sort((a,b) => {
     if (sortBy==='priority') { const o={high:0,medium:1,low:2}; return o[a.priority]-o[b.priority] }
-    if (sortBy==='end')      return (a.end_date||'9999')>(b.end_date||'9999')?1:-1
-    if (sortBy==='start')    return (a.start_date||'9999')>(b.start_date||'9999')?1:-1
+    if (sortBy==='end')      return byDate('end_date', a, b)
+    if (sortBy==='start')    return byDate('start_date', a, b)
     return new Date(b.created_at)-new Date(a.created_at)
   })
 
@@ -101,6 +131,18 @@ export default function Tasks({ user }) {
           {showForm ? '✕ Annuler' : '+ Nouvelle tâche'}
         </button>
       </div>
+
+      {/* Erreurs */}
+      {(feedback || loadError) && (
+        <div className="flex items-start justify-between gap-3 px-5 py-3.5 rounded-2xl mb-6"
+          style={{ background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626' }}>
+          <span className="text-sm font-semibold">⚠️ {feedback || loadError}</span>
+          {feedback && (
+            <button onClick={() => setFeedback('')} aria-label="Fermer le message d'erreur"
+              className="font-black leading-none">×</button>
+          )}
+        </div>
+      )}
 
       {/* Formulaire */}
       {showForm && (
@@ -154,6 +196,7 @@ export default function Tasks({ user }) {
               <div>
                 <label className="text-xs font-black text-gray-400 uppercase tracking-wider mb-2 block">🔴 Date de fin</label>
                 <input type="datetime-local" value={newTask.end_date}
+                  min={newTask.start_date || undefined}
                   onChange={e => setNewTask({...newTask, end_date:e.target.value})}
                   className="w-full rounded-xl px-4 py-3 text-sm font-medium focus:outline-none"
                   style={{ background:'#fef2f2', border:'1.5px solid #fecaca', color:'#374151' }}
